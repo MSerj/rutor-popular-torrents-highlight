@@ -154,8 +154,207 @@ GM_addStyle('#mserj_settings .mserj-color { max-width: 70px; max-height: 20px; }
 		})
 	}
 
+	// Sorting functionality
+	function sortByColumn(sortWhat, type, field, btnIndex) {
+		let dataClicked = sortWhat.sorti[btnIndex].press,
+			press = this
+
+		sortWhat = Object.assign({}, sortWhat)
+
+		if (type === 0) {
+			sortWhat.razd.sort(function (a, b) {
+				const an = a[field],
+					bn = b[field]
+				return an - bn
+			})
+		} else if (type === 1) {
+			sortWhat.razd.sort(function (a, b) {
+				const x = a[field].toLowerCase()
+				const y = b[field].toLowerCase()
+
+				if (x < y) return -1
+				if (x > y) return 1
+				return 0
+			})
+		}
+
+		if (dataClicked) sortWhat.razd.reverse()
+
+		for (var i = 0; i < sortWhat.razd.length; i++) {
+			let elDetach = $(sortWhat.razd[i].es),
+				childs = null
+
+			if (elDetach.next().next().is('.my_tr')) childs = [elDetach.next(), elDetach.next().next()]
+
+			elDetach.detach().appendTo(sortWhat.category)
+
+			if (childs != null) {
+				$(childs[1]).detach().insertAfter(elDetach)
+				$(childs[0]).detach().insertAfter(elDetach)
+			}
+		}
+
+		if (btnIndex === 3 || btnIndex === 4) {
+			press = $(sortWhat.sorti[btnIndex].el_img)
+		}
+
+		sortWhat.sorti.map(function (currArr, indexArr) {
+			if (indexArr !== btnIndex) {
+				currArr.press = false
+
+				if ($(currArr.el_img).is('img')) $(currArr.el_img).css('transform', 'scaleY(1)')
+				else $(currArr.el_img).find('img').css('transform', 'scaleY(1)')
+			}
+		})
+
+		if ($(press).is('img')) {
+			$(press).css('transform', 'scaleY(' + (dataClicked ? '1' : '-1') + ')')
+		} else {
+			$(press)
+				.find('img[width^=15]')
+				.css('transform', 'scaleY(' + (dataClicked ? '1' : '-1') + ')')
+		}
+
+		sortWhat.sorti[btnIndex].press = !sortWhat.sorti[btnIndex].press
+	}
+
+	// Эвенты для заголовков
+	function setEventHeaderTitle(massiv) {
+		let titleSort = [],
+			titles = $(this)
+				.find('.backgr > td')
+				.each(function (indexEl, el) {
+					console.log('el', el)
+					if (indexEl === 3 && el.textContent === 'Пиры') {
+						let img = $('<img>')
+								.attr({ src: 'https://raw.githubusercontent.com/AlekPet/Rutor-Preview-Ajax/master/assets/images/arrow_icon.gif', width: '15' })
+								.css({ position: 'relative', top: '3px', cursor: 'pointer' })
+								.attr({ title: 'Сортировать по Раздающим', id: '_Up' }),
+							img_clone = img.clone(false).attr({ title: 'Сортировать по Качающим', id: '_Down' })
+						$(el)
+							.css({ width: '90px' })
+							.append($('<span class="green">').text(' Р').css({ cursor: 'pointer' }).attr({ title: 'Сортировать по Раздающим', id: '_Up' }))
+							.append(img)
+							.append($('<span class="red">>').text('К').css({ cursor: 'pointer' }).attr({ title: 'Сортировать по Качающим', id: '_Down' }))
+							.append(img_clone)
+						titleSort.push(
+							{
+								el_img: img,
+								index: indexEl,
+								press: false
+							},
+							{
+								el_img: img_clone,
+								index: indexEl + 1,
+								press: false
+							}
+						)
+					} else {
+						let img = $('<img>')
+							.attr({ src: 'https://raw.githubusercontent.com/AlekPet/Rutor-Preview-Ajax/master/assets/images/arrow_icon.gif', width: '15' })
+							.css({ position: 'relative', top: $(el).children().first().is('img') ? '-10px' : '3px' })
+						$(el)
+							.css({ width: '80px', cursor: 'pointer' })
+							.attr('title', 'Сортировать по "' + ($(el).children().first().is('img') ? 'Добавлено' : $(el).text()) + '"')
+							.append(img)
+						titleSort.push({
+							el_img: el,
+							index: indexEl,
+							press: false
+						})
+					}
+				})
+		massiv.sorti = titleSort
+		// By date
+		titles.eq(0).click(function () {
+			sortByColumn.call(this, massiv, 0, 'date', 0)
+		})
+		// By name
+		titles.eq(1).click(function () {
+			sortByColumn.call(this, massiv, 1, 'name', 1)
+		})
+		// By size
+		titles.eq(2).click(function () {
+			sortByColumn.call(this, massiv, 0, 'size', 2)
+		})
+		// By Up/Down
+		titles
+			.eq(3)
+			.find('div, img')
+			.each(function (index, el) {
+				$(this).click(function () {
+					if (el.id === '_Up') {
+						sortByColumn.call(el, massiv, 0, 'up', 3)
+					} else {
+						sortByColumn.call(el, massiv, 0, 'down', 4)
+					}
+				})
+			})
+	}
+
+	function sorting() {
+		if (!location.href.includes('/torrent/')) {
+			// Ищим классы для получения данных
+			let massivT = [],
+				month = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
+				razmeronosti = ['kB', 'MB', 'GB']
+
+			$('#index > table').each(function (idx) {
+				let objCat = { category: this, name: $(this).prev().text(), razd: [] }
+
+				$(this)
+					.find('.gai, .tum')
+					.each(function () {
+						const rowWithComments = this.children.length === 5
+
+						const dateCell = this.children[0]
+						const nameCell = this.children[1]
+						const sizeCell = this.children[rowWithComments ? 3 : 2]
+						const peersCell = this.children[rowWithComments ? 4 : 3]
+
+						const name = nameCell.children[2].textContent || nameCell.children[0].getAttribute('title')
+						const size = sizeCell.textContent
+						const colR = peersCell.children[0].textContent
+						const colU = peersCell.children[2].textContent
+
+						// Date
+						let dateT = dateCell.textContent
+						dateT = dateT.split(/\s+/)
+
+						$.each(month, function (idx, val) {
+							if (dateT[1] === val.substr(0, 3)) dateT[1] = idx
+						})
+
+						dateT = new Date(parseInt('20' + dateT[2]), dateT[1], dateT[0], 0, 0, 0)
+
+						// Sizes
+						let complSize
+						$.each(razmeronosti, function (idx, val) {
+							if (size.includes(val)) {
+								complSize = size.substr(0, size.indexOf(razmeronosti[idx])) * 1
+								if (idx === 1) {
+									complSize = complSize * 1000
+								} else if (idx === 2) {
+									complSize = complSize * 1000000
+								}
+							} else {
+								complSize = parseFloat(size)
+							}
+						})
+
+						objCat.razd.push({ es: this, date: dateT, name, size: complSize, up: colR, down: colU })
+					})
+				massivT.push(objCat)
+				setEventHeaderTitle.call(this, massivT[idx])
+			})
+		}
+	}
+
+	// settings
 	loadSettings()
 	setStyles()
 	addSettings()
 	markLines(true)
+
+	sorting()
 })()
