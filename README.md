@@ -5,6 +5,6 @@ Hide not interested torrents. (matched words configurable)
 
 Colors configurable.
 
-![img.png](img.png)
+![img.png](docs/img.png)
 
-![img_1.png](img_1.png)
+![img_1.png](docs/img_1.png)
