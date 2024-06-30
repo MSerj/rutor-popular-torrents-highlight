@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name            RuTor popular torrents highlight
-// @description     Highlight popular torrents (based on peers)
-// @version         1.01
+// @name            RuTor popular torrents highlight + TorrServer integration
+// @description     Highlight popular torrents (based on peers), + Add to TorrServer button
+// @version         1.10
 // @match           *://rutor.is/*
 // @match           *://rutor.org/*
 // @match           *://rutor.info/*
@@ -20,15 +20,22 @@
 // ==/UserScript==
 
 // General styles
-GM_addStyle('#mserj_settings { width: 400px; height: 260px; position: fixed; left: 0; top: 0; background-color: #fff; border: 1px solid #a00; }')
-GM_addStyle(
-	`#mserj_settings .header {\tbackground: url("${location.origin}/i/backgr.png") 0 -13px;\theight: 41px;\tcolor: #000000;\tfont-weight: bold; text-align: center; }`
-)
+GM_addStyle('#mserj_settings { width: 400px; min-height: 150px; position: fixed; left: 0; top: 0; background-color: #fff; border: 1px solid #a00; }')
+GM_addStyle(`#mserj_settings .header {\tbackground: #ffde00;\tpadding: 10px;\tfont-weight: bold; text-align: center; }`)
 GM_addStyle('#mserj_settings .fields { padding: 5px; }')
 GM_addStyle('#mserj_settings .fields .row { clear: both; height: 30px; }')
 GM_addStyle('#mserj_settings .fields .row .col1 { width: 300px; float: left; }')
 GM_addStyle('#mserj_settings .fields .row .col2 { width: 90px; float: left; }')
 GM_addStyle('#mserj_settings .mserj-color { max-width: 70px; max-height: 20px; }')
+
+// GM_addStyle('#mserj_settings .fields .row { display: flex; margin-bottom: 10px; }')
+GM_addStyle('#mserj_settings .fields .row .label { display: flex; align-items: center; }')
+GM_addStyle('#mserj_settings .fields .row .label span { margin-right: 10px; }')
+GM_addStyle('#mserj_settings .fields .row .label span:first-child { width: 100px; }')
+
+// TorrServer icon
+const getTorrServerIcon = (size = 25) =>
+	`<img src="data:image/png;base64,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" width="${size}px" height="${size}px"  alt="TorrServer" />`
 
 // Main script
 ;(() => {
@@ -45,7 +52,13 @@ GM_addStyle('#mserj_settings .mserj-color { max-width: 70px; max-height: 20px; }
 			highQuality_color: GM_getValue('highQuality_color', '#f4ddff'),
 			mark_hidden: GM_getValue('mark_hidden', true),
 			hidden_opacity: GM_getValue('hidden_opacity', 0.1),
-			hidden_words: GM_getValue('hidden_words', 'МР3,FLAC,flac,КПК,Футбол,UFC,книг,книги,MP3')
+			hidden_words: GM_getValue('hidden_words', 'МР3,FLAC,flac,КПК,Футбол,UFC,книг,книги,MP3'),
+
+			showAddToTorrServerButton: GM_getValue('showAddToTorrServerButton', false),
+			torrServerIp: GM_getValue('torrServerIp', 'localhost'),
+			torrServerPort: GM_getValue('torrServerPort', 8090),
+			torrServerLogin: GM_getValue('torrServerLogin', ''),
+			torrServerPassword: GM_getValue('torrServerPassword', '')
 		}
 	}
 
@@ -77,28 +90,87 @@ GM_addStyle('#mserj_settings .mserj-color { max-width: 70px; max-height: 20px; }
 		$('#mserj_hidden_opacity').val(settings.hidden_opacity * 10)
 		$('#mserj_hidden_words').val(settings.hidden_words)
 
+		$('#mserj_showAddToTorrServerButton').attr('checked', !!settings.showAddToTorrServerButton)
+		$('#mserj_torrServerIp').val(settings.torrServerIp)
+		$('#mserj_torrServerPort').val(settings.torrServerPort)
+		$('#mserj_torrServerLogin').val(settings.torrServerLogin)
+		$('#mserj_torrServerPassword').val(settings.torrServerPassword)
+
 		$('#mserj_settings').css({ left: x, top: y }).toggle('fast')
 	}
 
+	// Adding settings button & modal
 	const addSettings = () => {
 		const $tab = $('<a href="javascript:;" class="menu_b"><div>Настройки</div></a>')
 
 		$tab.click(toggleSettings)
 		$('#menu').append($tab)
 
-		const $wnd = $(
-			'<div id="mserj_settings" style="display: none">' +
-				'<div class="header">Настройка скрипта</div>' +
-				'<div class="fields">' +
-				'<div class="row"><div class="col1">Цвет полоски популярности раздачи:</div><div class="col2"><input type="color" class="mserj-color" id="mserj_line_color" /></div></div>' +
-				'<div class="row"><div class="col1"><input type="checkbox" id="mserj_mark_repack">Выделять репаки</div><div class="col2"><input type="color" class="mserj-color" id="mserj_repack_color" /></div></div>' +
-				'<div class="row"><div class="col1"><input type="checkbox" id="mserj_mark_fitGirl">Выделять репаки от FitGirl</div><div class="col2"><input type="color" class="mserj-color" id="mserj_fitGirl_color" /></div></div>' +
-				'<div class="row"><div class="col1"><input type="checkbox" id="mserj_mark_highQuality">Выделять 4K раздачи</div><div class="col2"><input type="color" class="mserj-color" id="mserj_highQuality_color" /></div></div><div class="row"><div class="col1"><input type="checkbox" id="mserj_mark_hidden">Скрывать не интересные раздачи</div><div class="col2"><input type="range" class="mserj-color" min="0" max="10" id="mserj_hidden_opacity" /></div></div>' +
-				'<div class="row"><div class="col1">Скрыть раздачи включающие (через запятую):</div><div class="col2"><input type="text" class="mserj-color" id="mserj_hidden_words" /></div></div>' +
-				'<div class="row" style="text-align: center"><input type="button" value="Сохранить настройки" id="mserj_save_settings" /></div>' +
-				'</div>' +
-				'</div>'
-		)
+		const $wnd = $(`
+		<div id="mserj_settings" style="display: none">
+		  <div class="header">Настройка скрипта</div>
+		  <div class="fields">
+		    <div class="row">
+		      <div class="col1">Цвет полоски популярности раздачи:</div>
+		      <div class="col2"><input type="color" class="mserj-color" id="mserj_line_color" /></div>
+		    </div>
+		    <div class="row">
+		      <div class="col1"><input type="checkbox" id="mserj_mark_repack">Выделять репаки</div>
+		      <div class="col2"><input type="color" class="mserj-color" id="mserj_repack_color" /></div>
+		    </div>
+		    <div class="row">
+		    	<div class="col1"><input type="checkbox" id="mserj_mark_fitGirl">Выделять репаки от FitGirl</div>
+		    	<div class="col2"><input type="color" class="mserj-color" id="mserj_fitGirl_color" /></div>
+	        </div>
+		  	<div class="row">
+		  		<div class="col1"><input type="checkbox" id="mserj_mark_highQuality">Выделять 4K раздачи</div>
+		  		<div class="col2"><input type="color" class="mserj-color" id="mserj_highQuality_color" /></div>
+	        </div>
+	        <div class="row">
+	        	<div class="col1"><input type="checkbox" id="mserj_mark_hidden">Скрывать не интересные раздачи</div>
+	        	<div class="col2"><input type="range" class="mserj-color" min="0" max="10" id="mserj_hidden_opacity" /></div>
+	        </div>
+		    <div class="row">
+			    <div class="col1">Скрыть раздачи включающие (через запятую):</div>
+			    <div class="col2"><input type="text" class="mserj-color" id="mserj_hidden_words" /></div>
+		    </div>
+		    <hr />
+		    <div class="row">
+		       <label class="label">
+		         <input type="checkbox" id="mserj_showAddToTorrServerButton">
+		         <span>Показывать кнопку "TorrServer"</span>
+		         ${getTorrServerIcon()}
+		       </label>
+		     </div>
+		     <div class="row">
+		       <label class="label">
+		         <span>TorrServer IP</span>
+		         <input type="text" id="mserj_torrServerIp">
+		       </label>
+		     </div>
+		     <div class="row">
+		       <label class="label">
+		         <span>TorrServer Port</span>
+		         <input type="text" id="mserj_torrServerPort">
+		       </label>
+		     </div>
+		     <div class="row">
+		       <label class="label">
+		         <span>TorrServer Login</span>
+		         <input type="text" id="mserj_torrServerLogin">
+		       </label>
+		     </div>
+		     <div class="row">
+		       <label class="label">
+		         <span>TorrServer Password</span>
+		         <input type="password" id="mserj_torrServerPassword">
+		       </label>
+		     </div>
+		    <div class="row" style="margin-top: 10px; text-align: center"><input type="button" value="Сохранить настройки" id="mserj_save_settings" /></div>
+		  </div>
+		</div>
+		`)
+
 		$('body').append($wnd)
 
 		$('#mserj_save_settings').live('click', () => {
@@ -113,48 +185,100 @@ GM_addStyle('#mserj_settings .mserj-color { max-width: 70px; max-height: 20px; }
 			GM_setValue('hidden_opacity', $('#mserj_hidden_opacity').val() * 0.1)
 			GM_setValue('hidden_words', $('#mserj_hidden_words').val())
 
-			// location.reload()
-			loadSettings()
-			setStyles()
-			markLines()
-			$('#mserj_settings').toggle('fast')
+			GM_setValue('showAddToTorrServerButton', $('#mserj_showAddToTorrServerButton').is(':checked'))
+			GM_setValue('torrServerIp', $('#mserj_torrServerIp').val())
+			GM_setValue('torrServerPort', $('#mserj_torrServerPort').val())
+			GM_setValue('torrServerLogin', $('#mserj_torrServerLogin').val())
+			GM_setValue('torrServerPassword', $('#mserj_torrServerPassword').val())
+
+			location.reload()
 		})
 	}
 
-	const markLines = onInit => {
+	/**
+	 * TorrServer stuff
+	 */
+	function addToTorrServer(data) {
+		$.ajax({
+			type: 'POST',
+			url: `${settings.torrServerIp}:${settings.torrServerPort}/torrents`,
+			dataType: 'json',
+			data: JSON.stringify({ action: 'add', save_to_db: true, ...data }),
+			contentType: 'application/json',
+			beforeSend: function (xhr) {
+				if (settings.torrServerLogin && settings.torrServerPassword) {
+					xhr.setRequestHeader('Authorization', 'Basic ' + btoa(settings.torrServerLogin + ':' + settings.torrServerPassword))
+				}
+			},
+			success: ok => {
+				alert('Успешно добавлено в TorrServer')
+			},
+			error: response => {
+				if (response.status === 401) {
+					alert('Авторизация не удалась! Проверьте ( соединение / логин / пароль )')
+				} else {
+					alert('Не удалось отправить запрос на TorrServer')
+				}
+			}
+		})
+	}
+
+	// Mark/highlight lines
+	const markLines = () => {
 		const max_width = $(window).width() - 280 - 214
 
 		$('tr.gai, tr.tum').each(function () {
-			const $trs = $(this).find('td'),
-				$spans4 = $($trs.get().pop()).find('span'),
-				sp1as$ = $($trs.get(1)).find('a')
-			let count = (parseInt($.trim($($spans4.get(0)).text())) + parseInt($.trim($($spans4.get(1)).text()))) * 1.3
-			count = Math.min(max_width, parseInt(count / 1))
+			const cells = $(this).find('td'),
+				links_cell = cells.get(1),
+				peers_spans = $(cells.get().pop()).find('span'),
+				links = $(links_cell).find('a'),
+				magnetLink = links.get(1).href,
+				titleLink = links.length === 2 ? links.get(1) : links.get(2)
+			const count = (parseInt($.trim($(peers_spans.get(0)).text())) + parseInt($.trim($(peers_spans.get(1)).text()))) * 1.3
 
-			if (onInit) {
-				$($trs.get(1)).append('<div class="mserj-line" style="width: ' + count + 'px"></div>')
-			} else {
-				$(this).removeClass('mserj-repack mserj-fitGirl mserj-4K mserj-hidden')
+			$(links_cell).append('<div class="mserj-line" style="width: ' + Math.min(max_width, parseInt(count / 1)) + 'px"></div>')
+
+			// Adding "add to torrServer" button to the page.
+			if (settings.showAddToTorrServerButton && magnetLink) {
+				// Create torrServer button
+				const id = titleLink.href.split('torrent/')[1].split('/')[0]
+				const torrServerButton = document.createElement('button')
+				torrServerButton.id = `add_to_torrserver-${id}`
+				torrServerButton.title = 'Добавить в TorrServer'
+				torrServerButton.style.fontSize = '0px'
+				torrServerButton.style.border = 'none'
+				torrServerButton.style.padding = '0px'
+				torrServerButton.style.cursor = 'pointer'
+				torrServerButton.style.marginRight = '5px'
+				torrServerButton.innerHTML = getTorrServerIcon(13)
+
+				links_cell.insertBefore(torrServerButton, titleLink)
+
+				$(`#add_to_torrserver-${id}`).bind('click', () => {
+					addToTorrServer({
+						link: magnetLink.split('&dn')[0]
+					})
+				})
 			}
 
-			const sp1a = sp1as$.length === 2 ? sp1as$.get(1) : sp1as$.get(2)
-
-			if (settings.mark_repack && (sp1a.innerHTML.includes('RePack') || sp1a.innerHTML.includes('repack'))) {
+			if (settings.mark_repack && (titleLink.innerHTML.includes('RePack') || titleLink.innerHTML.includes('repack'))) {
 				$(this).addClass('mserj-repack')
 			}
-			if (settings.mark_fitGirl && (sp1a.innerHTML.includes('FitGirl') || sp1a.innerHTML.includes('fitgirl'))) {
+			if (settings.mark_fitGirl && (titleLink.innerHTML.includes('FitGirl') || titleLink.innerHTML.includes('fitgirl'))) {
 				$(this).addClass('mserj-fitGirl')
 			}
-			if (settings.mark_highQuality && (sp1a.innerHTML.includes(' 4K') || sp1a.innerHTML.includes('2160p'))) {
+			if (settings.mark_highQuality && (titleLink.innerHTML.includes(' 4K') || titleLink.innerHTML.includes('2160p'))) {
 				$(this).addClass('mserj-4K')
 			}
-			if (settings.mark_hidden && settings.hidden_words.split(',').some(word => sp1a.innerHTML.includes(word))) {
+			if (settings.mark_hidden && settings.hidden_words.split(',').some(word => titleLink.innerHTML.includes(word))) {
 				$(this).addClass('mserj-hidden')
 			}
 		})
 	}
 
-	// Sorting functionality
+	/**
+	 * Sorting functionality
+	 */
 	function sortByColumn(sortWhat, type, field, btnIndex) {
 		let dataClicked = sortWhat.sorti[btnIndex].press,
 			press = this
@@ -218,13 +342,12 @@ GM_addStyle('#mserj_settings .mserj-color { max-width: 70px; max-height: 20px; }
 		sortWhat.sorti[btnIndex].press = !sortWhat.sorti[btnIndex].press
 	}
 
-	// Эвенты для заголовков
+	// Header events
 	function setEventHeaderTitle(massiv) {
 		let titleSort = [],
 			titles = $(this)
 				.find('.backgr > td')
 				.each(function (indexEl, el) {
-					console.log('el', el)
 					if (indexEl === 3 && el.textContent === 'Пиры') {
 						let img = $('<img>')
 								.attr({ src: 'https://raw.githubusercontent.com/AlekPet/Rutor-Preview-Ajax/master/assets/images/arrow_icon.gif', width: '15' })
@@ -354,7 +477,7 @@ GM_addStyle('#mserj_settings .mserj-color { max-width: 70px; max-height: 20px; }
 	loadSettings()
 	setStyles()
 	addSettings()
-	markLines(true)
+	markLines()
 
 	sorting()
 })()
