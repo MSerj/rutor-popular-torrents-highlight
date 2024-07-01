@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            RuTor popular torrents highlight + TorrServer integration
 // @description     Highlight popular torrents (based on peers) + Add to TorrServer button
-// @version         1.10
+// @version         1.11
 // @match           *://rutor.is/*
 // @match           *://rutor.org/*
 // @match           *://rutor.info/*
@@ -20,6 +20,7 @@
 // ==/UserScript==
 
 // General styles
+GM_addStyle('table tr.backgr td { white-space: nowrap; }')
 GM_addStyle('#mserj_settings { width: 400px; min-height: 150px; position: fixed; left: 0; top: 0; background-color: #fff; border: 1px solid #a00; }')
 GM_addStyle(`#mserj_settings .header {\tbackground: #ffde00;\tpadding: 10px;\tfont-weight: bold; text-align: center; }`)
 GM_addStyle('#mserj_settings .fields { padding: 5px; }')
@@ -212,46 +213,74 @@ const createTorrServerButton = ({ id, size }) => {
 	/**
 	 * TorrServer stuff
 	 */
-	function addToTorrServer(data) {
-		$.ajax({
-			type: 'POST',
-			url: `${settings.torrServerIp}:${settings.torrServerPort}/torrents`,
-			dataType: 'json',
-			data: JSON.stringify({ action: 'add', save_to_db: true, ...data }),
-			contentType: 'application/json',
-			beforeSend: function (xhr) {
-				if (settings.torrServerLogin && settings.torrServerPassword) {
-					xhr.setRequestHeader('Authorization', 'Basic ' + btoa(settings.torrServerLogin + ':' + settings.torrServerPassword))
-				}
-			},
-			success: ok => {
+	async function addToTorrServer(data) {
+		try {
+			const response = await fetch(`${settings.torrServerIp}:${settings.torrServerPort}/torrents`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization:
+						settings.torrServerLogin && settings.torrServerPassword
+							? `Basic ${btoa(settings.torrServerLogin + ':' + settings.torrServerPassword)}`
+							: undefined
+				},
+				body: JSON.stringify({ action: 'add', save_to_db: true, ...data })
+			})
+			if (response.ok) {
 				alert('Успешно добавлено в TorrServer')
-			},
-			error: response => {
+			} else {
 				if (response.status === 401) {
 					alert('Авторизация не удалась! Проверьте ( соединение / логин / пароль )')
 				} else {
 					alert('Не удалось отправить запрос на TorrServer')
 				}
 			}
-		})
+		} catch (error) {
+			alert('Не удалось отправить запрос на TorrServer')
+		}
 	}
 
 	// Adding "add to torrServer" button on details page
 	const addTorrServerButtonOnDetailPage = () => {
-		const downloadSection = $('#download')
-		const magnetLink = downloadSection.find('a')[0].href
+		const downloadSection = document.getElementById('download')
 
-		const id = location.href.split('torrent/')[1].split('/')[0]
-		const torrServerButton = createTorrServerButton({ id, size: 30 })
-		downloadSection.prepend(torrServerButton)
+		if (downloadSection) {
+			const magnetLink = downloadSection.querySelectorAll('a')[0].href
 
-		$(`#add_to_torrserver-${id}`).bind('click', () => {
-			addToTorrServer({
-				link: magnetLink.split('&dn')[0],
-				poster: $('#details img')[0].src
+			const id = location.href.split('torrent/')[1].split('/')[0]
+			const torrServerButton = createTorrServerButton({ id, size: 30 })
+			downloadSection.prepend(torrServerButton)
+
+			$(`#add_to_torrserver-${id}`).bind('click', () => {
+				addToTorrServer({
+					link: magnetLink.split('&dn')[0],
+					poster: $('#details img')[0].src
+				})
 			})
-		})
+		}
+	}
+
+	// Fetch torrent poster
+	async function fetchTorrentPoster(url) {
+		try {
+			const response = await fetch(url)
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`)
+			}
+			const htmlString = await response.text()
+			const parser = new DOMParser()
+			const doc = parser.parseFromString(htmlString, 'text/html')
+
+			const poster = doc.querySelector('#details img')
+			if (poster) {
+				return poster.src
+			} else {
+				return null
+			}
+		} catch (error) {
+			console.error('Error fetching or parsing HTML:', error)
+			return null
+		}
 	}
 
 	// Mark/highlight lines
@@ -276,9 +305,13 @@ const createTorrServerButton = ({ id, size }) => {
 				links_cell.insertBefore(torrServerButton, titleLink)
 
 				$(`#add_to_torrserver-${id}`).bind('click', () => {
-					addToTorrServer({
-						link: magnetLink.split('&dn')[0]
-					})
+					;(async () => {
+						const poster = await fetchTorrentPoster(titleLink)
+						addToTorrServer({
+							link: magnetLink.split('&dn')[0],
+							poster
+						})
+					})()
 				})
 			}
 
@@ -325,7 +358,7 @@ const createTorrServerButton = ({ id, size }) => {
 
 		if (dataClicked) sortWhat.razd.reverse()
 
-		for (var i = 0; i < sortWhat.razd.length; i++) {
+		for (let i = 0; i < sortWhat.razd.length; i++) {
 			let elDetach = $(sortWhat.razd[i].es),
 				childs = null
 
