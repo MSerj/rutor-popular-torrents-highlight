@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            RuTor popular torrents highlight + TorrServer integration
-// @description     Highlight popular torrents (based on peers), + Add to TorrServer button
+// @description     Highlight popular torrents (based on peers) + Add to TorrServer button
 // @version         1.10
 // @match           *://rutor.is/*
 // @match           *://rutor.org/*
