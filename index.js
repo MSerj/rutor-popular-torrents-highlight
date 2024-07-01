@@ -37,6 +37,20 @@ GM_addStyle('#mserj_settings .fields .row .label span:first-child { width: 100px
 const getTorrServerIcon = (size = 25) =>
 	`<img src="data:image/png;base64,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" width="${size}px" height="${size}px"  alt="TorrServer" />`
 
+const createTorrServerButton = ({ id, size }) => {
+	const torrServerButton = document.createElement('button')
+	torrServerButton.id = `add_to_torrserver-${id}`
+	torrServerButton.title = 'Добавить в TorrServer'
+	torrServerButton.style.fontSize = '0px'
+	torrServerButton.style.border = 'none'
+	torrServerButton.style.padding = '0px'
+	torrServerButton.style.cursor = 'pointer'
+	torrServerButton.style.marginRight = '5px'
+	torrServerButton.innerHTML = getTorrServerIcon(size)
+
+	return torrServerButton
+}
+
 // Main script
 ;(() => {
 	let settings = {}
@@ -223,6 +237,23 @@ const getTorrServerIcon = (size = 25) =>
 		})
 	}
 
+	// Adding "add to torrServer" button on details page
+	const addTorrServerButtonOnDetailPage = () => {
+		const downloadSection = $('#download')
+		const magnetLink = downloadSection.find('a')[0].href
+
+		const id = location.href.split('torrent/')[1].split('/')[0]
+		const torrServerButton = createTorrServerButton({ id, size: 30 })
+		downloadSection.prepend(torrServerButton)
+
+		$(`#add_to_torrserver-${id}`).bind('click', () => {
+			addToTorrServer({
+				link: magnetLink.split('&dn')[0],
+				poster: $('#details img')[0].src
+			})
+		})
+	}
+
 	// Mark/highlight lines
 	const markLines = () => {
 		const max_width = $(window).width() - 280 - 214
@@ -238,20 +269,10 @@ const getTorrServerIcon = (size = 25) =>
 
 			$(links_cell).append('<div class="mserj-line" style="width: ' + Math.min(max_width, parseInt(count / 1)) + 'px"></div>')
 
-			// Adding "add to torrServer" button to the page.
+			// Adding "add to torrServer" button the row
 			if (settings.showAddToTorrServerButton && magnetLink) {
-				// Create torrServer button
 				const id = titleLink.href.split('torrent/')[1].split('/')[0]
-				const torrServerButton = document.createElement('button')
-				torrServerButton.id = `add_to_torrserver-${id}`
-				torrServerButton.title = 'Добавить в TorrServer'
-				torrServerButton.style.fontSize = '0px'
-				torrServerButton.style.border = 'none'
-				torrServerButton.style.padding = '0px'
-				torrServerButton.style.cursor = 'pointer'
-				torrServerButton.style.marginRight = '5px'
-				torrServerButton.innerHTML = getTorrServerIcon(13)
-
+				const torrServerButton = createTorrServerButton({ id, size: 13 })
 				links_cell.insertBefore(torrServerButton, titleLink)
 
 				$(`#add_to_torrserver-${id}`).bind('click', () => {
@@ -478,6 +499,7 @@ const getTorrServerIcon = (size = 25) =>
 	setStyles()
 	addSettings()
 	markLines()
+	addTorrServerButtonOnDetailPage()
 
 	sorting()
 })()
